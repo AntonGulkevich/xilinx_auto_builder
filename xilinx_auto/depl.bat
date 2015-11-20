@@ -27,9 +27,14 @@ set "TCLFILE=xcomp.tcl"
 set "MAKEFILE=makeFile.tcl"
 set "HWPNAME=ubs_design_wrapper_hw_platform_0"
 set "ELFFILE=%WORKSPACE%%PROJECTNAME%\Debug\%PROJECTNAME%.elf"
+set "TEMPDIR=%WORKSPACE%tempDir"
+goto debugTest
 ::clear previous workspace----------------------------------------------------------------------------------------------------------
 echo clear previous workspace
 FOR /D %%p IN (%WORKSPACE%*.*) DO rmdir "%%p" /s /q
+::clear previous build and temp folders---------------------------------------------------------------------------------------------
+echo clear temp files
+FOR /D %%p IN (%TEMPDIR%*.*) DO rmdir "%%p" /s /q
 ::create tcl file-------------------------------------------------------------------------------------------------------------------
 echo sdk set_workspace %WORKSPACE% > %TCLFILE%
 echo sdk create_hw_project -name %HWPNAME% -hwspec %HDFFILE% >> %TCLFILE%
@@ -87,6 +92,8 @@ if not exist %WORKSPACE%boot.bin (
 	goto checkBootFile
 )
 echo %WORKSPACE%boot.bin created successfully
+
+:debugTest
 ::creating file structure-----------------------------------------------------------------------------------------------------------
 ::disk
 ::	bin
@@ -139,43 +146,49 @@ mkdir %WORKSPACE%disk\bin
 mkdir %WORKSPACE%disk\doc
 mkdir %WORKSPACE%disk\pcwf
 mkdir %WORKSPACE%disk\src
-::create temp dir-------------------------------------------------------------------------------------------------------------------
-set "TEMPDIR=%WORKSPACE%tempDir"
 mkdir %TEMPDIR%
+mkdir %TEMPDIR%\burnubs
 ::make rar.exe files--------------------------------------------------------------------------------------------------------------- 
-if exist "%Programfiles%\winrar\winrar.exe"
-	set WINRARDIST=%Programfiles%\winrar\winrar.exe
+if exist %Programfiles%\winrar\winrar.exe (
+	set "WINRARDIST=%Programfiles%\winrar\winrar.exe"
 	goto packWinRar
 )
-set WINRARDIST=%Programfiles% (x86)\winrar\winrar.exe
-:packWinRar
+set "WINRARDIST=%Programfiles% (x86)\winrar\winrar.exe"
 if not exist %WINRARDIST%(
-    echo FAIL: pls install winrar in %WINRARDIST%
+    echo FAIL: please install winrar in %WINRARDIST% 
 	pause
     exit /b 1
 )
+:packWinRar
 ::creating autorun.txt--------------------------------------------------------------------------------------------------------------
-set AUTORUNTXT=autorun.txt
-echo TempMode=Будет проведено программирование блока УБС\nпрограммым обеспечением ТЮКН.00114-05. Продолжить?,Программное обеспечение ТЮКН.00114-05 > %AUTORUNTXT%
-echo Setup=burn.bat >> %AUTORUNTXT%
+set "AUTORUNTXT=autorun.txt""
+echo TempMode=Будет проведено программирование блока УБС\nпрограммым обеспечением ТЮКН.00114-05. Продолжить?,Программное обеспечение ТЮКН.00114-05 > %TEMPDIR%\%AUTORUNTXT%
+echo Setup=burn.bat >> %TEMPDIR%\%AUTORUNTXT%
+::create files.list zunq------------------------------------------------------------------------------------------------------------
+echo %WORKSPACE%boot.bin > %TEMPDIR%\fileszynq.list
+echo %TEMPDIR%\burn.bat >> %TEMPDIR%\fileszynq.list
+::create files.list zunq------------------------------------------------------------------------------------------------------------
+echo %WORKSPACE%boot.bin > %TEMPDIR%\filesusb.list
+echo %TEMPDIR%\burnubs\burn.bat >> %TEMPDIR%\filesusb.list
+::create burn.bat zynq--------------------------------------------------------------------------------------------------------------
+echo set path=c:\Xilinx\SDK\2014.4\bin;%%PATH%% > %TEMPDIR%\burn.bat
+echo zynq_flash -f BOOT.bin -offset 0x000000 -flash_type qspi_single -cable type xilinx_tcf url TCP:127.0.0.1:3121 >> %TEMPDIR%\burn.bat
+echo pause >> %TEMPDIR%\burn.bat
+::create burn.bat ubsl--------------------------------------------------------------------------------------------------------------
+echo fw-c.exe BOOT.bin > %TEMPDIR%\burnubs\burn.bat
+echo pause >> %TEMPDIR%\burnubs\burn.bat
 ::----------------------------------------------------------------------------------------------------------------------------------
-
-
-%WINRARDIST% a -sfx -zautorun.txt -m5 TUKN.00114-05_JTAG.exe @files.lst
-::copy files-----------------------------------------------------------------------------------------------------------------------
-xcopy /s/e/y/h %WORKSPACE%disk\bin %BINDESCT%
+::----------------------------------------------------------------------------------------------------------------------------------
+::----------------------------------------------------------------------------------------------------------------------------------
+call "%WINRARDIST%" a -sfx -z %TEMPDIR%\autorun.txt -m5 %WORKSPACE%disk\bin\TUKN.00114-05_JTAG.exe @%TEMPDIR%\fileszynq.list
+call "%WINRARDIST%" a -sfx -z %TEMPDIR%\autorun.txt -m5 %WORKSPACE%disk\bin\TUKN.00114-05_USB.exe @%TEMPDIR%\filesusb.list
+::copy files------------------------------------------------------------------------------------------------------------------------
+exit /b 1
 xcopy /s/e/y/h %WORKSPACE%disk\doc %BINDESCT%
 xcopy /s/e/y/h %WORKSPACE%disk\pcwf %BINDESCT%
 xcopy /s/e/y/h %WORKSPACE%disk\src %BINDESCT%
 xcopy /s/e/y/h %WORKSPACE%disk %INFOTXTFILEDEST%
 ::----------------------------------------------------------------------------------------------------------------------------------
-::create folders
-::copy files
-
-
-
-
-
 
 
 
