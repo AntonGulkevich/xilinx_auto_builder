@@ -2,34 +2,29 @@
 goto start2
 ——————————————————————————————————————
 Configuration file with local variables
-last changes 18.11.2015
+last changes 23.11.2015 Gulkevich_A
 ——————————————————————————————————————
 :start2
 ::workspace directory need for xilinx sdk 
-set "WORKSPACE=D:\ws\"
+::i am begging u to create and to set the workspace directory with no spaces
+::in other case rewrite all paths in depl.bat with 
+set "WORKSPACE=D:\\ws"
 ::name of main project
 set "PROJECTNAME=ucu_fw"
 ::destination of xilinx command line tool bat file xsct.bat
 set "XSCTDEST=D:\Xilinx\SDK\2015.1\bin\xsct.bat"
 ::desination of hardware platform file *.hdf
-set "HDFFILE=D:\\x-ws\\ubs_work.sdk\\ubs_design_wrapper.hdf"
+set "HDFFILE=D:\\ubs\\ubsk\\PLD\\ubs_ver2\\ubs_work_proj\\ubs_work.sdk\\ubs_design_wrapper.hdf"
 ::destination of loader.elf file
-set "BOOTLOADER=D:\scripts\loader.elf"
+set "BOOTLOADER=D:\ubs\ubsk\scripts\loader.elf"
 ::name of bit file needed for boot.bin compilation
 set "UBSDESIGNWRAPPER=ubs_design_wrapper.bit"
 ::destination od xilinx bootgen.bat file
 set "BOOTGENFILE=D:\Xilinx\SDK\2015.1\bin\bootgen.bat"
 ::destination of source files
-set "CRCFILES=D:\ubs\Dev\lib\win32DLib\win32DLib\ucu_fw"
-::	bin
-::		TUKN.00114-05_JTAG.exe
-::			burn.bat
-::			BOOT.bin
-::		TUKN.00114-05_USB.exe
-::			fw-c.exe
-::			burn.bat
-::			BOOT.bin
-set "BINDESCT="
+set "CRCFILES=D:\ubs\ubsk\Soft\Dev\ucu_fw"
+::destination of console firmware loader-------------------------------------------------
+set "FWCLOADER=D:\ubs\ubsk\scripts\x86\firmware loaders"
 ::---------------------------------------------------------------------------------------
 ::destination of documents
 ::	doc
@@ -40,7 +35,7 @@ set "BINDESCT="
 ::		Текст программ.docx
 ::		ТЗ тестовое Разбор и вывод данных записанных с приемника цифрового сигнала.docx
 ::		ТЗ убс ПЛИС.docx
-set "DOCDEST="
+set "DOCDEST=D:\ubs\ubsk\Documents"
 ::---------------------------------------------------------------------------------------
 ::	pcfw
 ::		CyUSB.dll
@@ -64,13 +59,8 @@ set "DOCDEST="
 ::		UBSLib.dll
 ::		UBSManager.exe
 ::		СomposeContracts.dll
-set "PCFWDEST="
+set "PCFWDEST=D:\ubs\ubsk\Archive\pcfw"
 ::---------------------------------------------------------------------------------------
-::	src
-::		pld.exe
-::		soft.exe
-::			ucu_fw
-::			ucu_fw_bsp
-set "CRCDEST="
+set "INFOTXTFILEDEST=C:\Users\Gulkevich_A\Desktop\xilinx_auto\info\info.txt"
 ::---------------------------------------------------------------------------------------
-set "INFOTXTFILEDEST="
+set "PLDDEST=D:\ubs\ubsk\PLD"

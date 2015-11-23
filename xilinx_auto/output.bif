@@ -1,6 +1,0 @@
-the_ROM_image: 
-{ 
-[bootloader]D:\scripts\loader.elf 
-D:\ws\ubs_design_wrapper_hw_platform_0\ubs_design_wrapper.bit 
-D:\ws\ucu_fw\Debug\ucu_fw.elf 
-} 
