@@ -2,14 +2,25 @@
 goto start
 ------------------------------------------------------------------------------------------------------------------------------------
 Deployment batch file
-last changes 23.11.2015 Gulkevich_A
+last changes 28.11.2015 Gulkevich_A
+Error levels:
+	1 - Config file is unavailable
+	2 - xsct.bat file is unavailable
+	3 - ELF FILE is not exist or unavalible
+	4 - BOOTLOADER is not exist or unavalible
+	5 - HDFFILE is not exist or unavalible
+	6 - boot.bin is not exist or unavalible
+	7 - something bad happened
+	8 - impossible is nothing
 ------------------------------------------------------------------------------------------------------------------------------------
 :start
+set ERROREXIT=0
 chcp 866 >NUL
 set VARBAT=%~dp0\var.bat
 :: check config file----------------------------------------------------------------------------------------------------------------
 if not exist "%VARBAT%" (
     echo FAIL: Config file is unavailable
+	set ERROREXIT=1
 	goto deleteExit
 )
 
@@ -17,6 +28,7 @@ call "%VARBAT%"
 :: check xsct.bat file--------------------------------------------------------------------------------------------------------------
 if not exist "%XSCTDEST%" (
     echo FAIL: xsct.bat file is unavailable
+	set ERROREXIT=2
 	goto deleteExit
 )
 ::set local parameters--------------------------------------------------------------------------------------------------------------
@@ -43,6 +55,11 @@ timeout /t 1 /nobreak > NUL
 ::execute tcl file------------------------------------------------------------------------------------------------------------------
 echo executing tcl file "%TCLFILE%"
 call "%XSCTDEST%" "%TCLFILE%"
+if not errorlevel 0 (
+	echo Fail: error in xsct while creating project.
+	set ERROREXIT=7
+	goto deleteExit
+)
 ::copy source files-----------------------------------------------------------------------------------------------------------------
 xcopy /s/e/y/h "%CRCFILES%" "%WORKSPACE%\%PROJECTNAME%"
 ::build elf file--------------------------------------------------------------------------------------------------------------------
@@ -51,21 +68,29 @@ echo sdk build_project  >> makeFile.tcl
 echo exit >> makeFile.tcl
 timeout /t 1 /nobreak > NUL
 call "%XSCTDEST%" makeFile.tcl
+if not errorlevel 0 (
+	echo Fail: error in xsct while building project.
+	set ERROREXIT=7
+	goto deleteExit
+)
 ::check file existance--------------------------------------------------------------------------------------------------------------
 :checkExist
 if not exist "%ELFFILE%" (
 	echo Fail: %ELFFILE% is not exist
+	set ERROREXIT=3
 	goto deleteExit
 )
 :checkExist1
 if not exist "%BOOTLOADER%" (
 	echo Fail: %BOOTLOADER% is not exist
-	goto deleteExit1
+	set ERROREXIT=4
+	goto deleteExit
 )
 :checkExist2
 if not exist "%HDFFILE%" (
 	echo Fail: %HDFFILE% is not exist
-	goto deleteExit2
+	set ERROREXIT=5
+	goto deleteExit
 )
 ::check is file unlocked------------------------------------------------------------------------------------------------------------
 :unlocked
@@ -90,11 +115,19 @@ echo } >> output.bif
 timeout /t 1 /nobreak > NUL
 ::boot gen -------------------------------------------------------------------------------------------------------------------------
 call "%BOOTGENFILE%" -image output.bif -o i "%WORKSPACE%\boot.bin" -w
+if not errorlevel 0 (
+	echo Fail: error in "%BOOTGENFILE%" while building boot.bin.
+	set ERROREXIT=7
+	goto deleteExit
+)
 if not exist "%WORKSPACE%\boot.bin" (
 	echo Fail: "%WORKSPACE%\boot.bin" is not exist
+	set ERROREXIT=6
 	goto deleteExit
 )
 echo %WORKSPACE%\boot.bin created successfully
+::adding crc to boot.bin------------------------------------------------------------------------------------------------------------
+call calcRCR32.exe %WORKSPACE%\boot.bin 
 ::creating disk structure-----------------------------------------------------------------------------------------------------------
 ::disk
 ::	bin
@@ -177,25 +210,59 @@ echo "%WORKSPACE%\boot.bin" > "%TEMPDIR%\filesusb.list"
 echo "%TEMPDIR%\burnubs\burn.bat" >> "%TEMPDIR%\filesusb.list"
 echo "%FWCLOADER%" >> "%TEMPDIR%\filesusb.list"
 ::create burn.bat zynq--------------------------------------------------------------------------------------------------------------
-echo set path=c:\Xilinx\SDK\2014.4\bin;%%PATH%% > "%TEMPDIR%\burn.bat"
+echo set path=c:\Xilinx\SDK\2015.1\bin;%%PATH%% > "%TEMPDIR%\burn.bat"
 echo zynq_flash -f BOOT.bin -offset 0x000000 -flash_type qspi_single -cable type xilinx_tcf url TCP:127.0.0.1:3121 >> "%TEMPDIR%\burn.bat"
 echo pause >> "%TEMPDIR%\burn.bat"
 ::create burn.bat ubsl--------------------------------------------------------------------------------------------------------------
 echo fw-l-c.exe BOOT.bin > "%TEMPDIR%\burnubs\burn.bat"
 echo pause >> "%TEMPDIR%\burnubs\burn.bat"
 ::----------------------------------------------------------------------------------------------------------------------------------
+echo Creating self extr. archive "%WORKSPACE%\disk\bin\TUKN.00114-05_JTAG.exe"...
 call "%WINRARDIST%" a -sfx -ep -z"%TEMPDIR%\autorun.txt" -m5 "%WORKSPACE%\disk\bin\TUKN.00114-05_JTAG.exe" @"%TEMPDIR%\fileszynq.list"
+if not errorlevel 0 (
+	echo Fail: error in "%WINRARDIST%" while creating self extr. archive "%WORKSPACE%\disk\bin\TUKN.00114-05_JTAG.exe"
+	set ERROREXIT=7
+	goto deleteExit
+)
 echo Created self extr. archive "%WORKSPACE%\disk\bin\TUKN.00114-05_JTAG.exe"
+::----------------------------------------------------------------------------------------------------------------------------------
+echo Creating self extr. archive "%WORKSPACE%\disk\bin\TUKN.00114-05_USB.exe"...
 call "%WINRARDIST%" a -sfx -ep -z"%TEMPDIR%\autorun.txt" -m5 "%WORKSPACE%\disk\bin\TUKN.00114-05_USB.exe" @"%TEMPDIR%\filesusb.list"
+if not errorlevel 0 (
+	echo Fail: error in "%WINRARDIST%" while creating self extr. archive "%WORKSPACE%\disk\bin\TUKN.00114-05_USB.exe"
+	set ERROREXIT=7
+	goto deleteExit
+)
 echo Created self extr. archive "%WORKSPACE%\disk\bin\TUKN.00114-05_USB.exe"
+::----------------------------------------------------------------------------------------------------------------------------------
+echo Creating self extr. archive "%WORKSPACE%\disk\src\soft.exe"...
 call "%WINRARDIST%" a -sfx -ep1 -m5 "%WORKSPACE%\disk\src\soft.exe" "%WORKSPACE%\%PROJECTNAME%" "%WORKSPACE%\%PROJECTNAME%_bsp"
+if not errorlevel 0 (
+	echo Fail: error in "%WINRARDIST%" while creating self extr. archive "%WORKSPACE%\disk\src\soft.exe"
+	set ERROREXIT=7
+	goto deleteExit
+)
 echo Created self extr. archive "%WORKSPACE%\disk\src\soft.exe"
+::----------------------------------------------------------------------------------------------------------------------------------
+echo Creating self extr. archive "%WORKSPACE%\disk\src\pld.exe"...
 call "%WINRARDIST%" a -sfx -ep1 -m5 "%WORKSPACE%\disk\src\pld.exe" "%PLDDEST%"
+if not errorlevel 0 (
+	echo Fail: error in "%WINRARDIST%" while creating self extr. archive "%WORKSPACE%\disk\src\pld.exe"
+	set ERROREXIT=7
+	goto deleteExit
+)
 echo Created self extr. archive "%WORKSPACE%\disk\src\pld.exe"
 ::copy files------------------------------------------------------------------------------------------------------------------------
 xcopy /s/e/y/h "%DOCDEST%" "%WORKSPACE%\disk\doc" 
 xcopy /s/e/y/h "%PCFWDEST%" "%WORKSPACE%\disk\pcwf"
 xcopy /s/e/y/h "%INFOTXTFILEDEST%" "%WORKSPACE%\disk"
+::----------------------------------------------------------------------------------------------------------------------------------
+for %%A in (*.log) do del %%A
+for %%A in (*.tcl) do del %%A
+for %%A in (*.bif) do del %%A
+rd /s /q .Xil
+rd /s /q "%TEMPDIR%"
+exit /b 0
 ::----------------------------------------------------------------------------------------------------------------------------------
 :deleteExit
 for %%A in (*.log) do del %%A
@@ -203,4 +270,4 @@ for %%A in (*.tcl) do del %%A
 for %%A in (*.bif) do del %%A
 rd /s /q .Xil
 rd /s /q "%TEMPDIR%"
-::----------------------------------------------------------------------------------------------------------------------------------
+exit /b %ERROREXIT%
